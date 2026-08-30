@@ -56,3 +56,43 @@ app.post('/tasks', (req, res) => {
 
   res.status(201).json(formatTask(newTask));
 });
+
+
+
+
+// PUT /tasks/:id - Update an existing task
+app.put('/tasks/:id', (req, res) => {
+  const taskId = Number(req.params.id);
+  const { title, done } = req.body;
+
+  // Check if task exists
+  const existingTask = db.prepare('SELECT * FROM tasks WHERE id = ?').get(taskId);
+  if (!existingTask) {
+    return res.status(404).json({ error: 'Task not found' });
+  }
+
+  // Validate title if provided
+  const updatedTitle = title !== undefined ? title.trim() : existingTask.title;
+  if (!updatedTitle) {
+    return res.status(400).json({ error: 'Title cannot be empty' });
+  }
+
+  const updatedDone = done !== undefined ? (done ? 1 : 0) : existingTask.done;
+
+  db.prepare('UPDATE tasks SET title = ?, done = ? WHERE id = ?').run(updatedTitle, updatedDone, taskId);
+
+  const updatedTask = db.prepare('SELECT * FROM tasks WHERE id = ?').get(taskId);
+  res.status(200).json(formatTask(updatedTask));
+});
+
+// DELETE /tasks/:id - Delete a task
+app.delete('/tasks/:id', (req, res) => {
+  const taskId = Number(req.params.id);
+  const info = db.prepare('DELETE FROM tasks WHERE id = ?').run(taskId);
+
+  if (info.changes === 0) {
+    return res.status(404).json({ error: 'Task not found' });
+  }
+
+  res.status(200).json({ message: 'Task deleted successfully' });
+});
